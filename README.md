@@ -1,6 +1,8 @@
 # Behavioral Cloning
-This project defines, trains and serves prediction for a self driving car based on a driving
-simulator. It was developed and submitted as part of Udacity Self Driving Car Nanodegree.
+This project defines CNN (Convolutional Neural Network) using Keras, trains the model on data 
+gathered from driving simulator and uses the trained model to predict steering angles for a car
+in the simulator given a frame from central camera. The project was developed and submitted as 
+part of Udacity Self Driving Car Nanodegree.
 
 ## Change Log
 1. Simplified architecture to 3 convolutional layers followed by 3 fully connected.
@@ -23,7 +25,7 @@ The network consists of three convolutional layers increasing in depth and 3 ful
 layers decreasing in size. Dropout is employed between the fully connected layers and 
 activation function is relu.
 Here is the network architecture as shown by keras model.summary():
-`
+```
 Layer (type)                     Output Shape          Param #     Connected to                     
 ====================================================================================================
 convolution2d_1 (Convolution2D)  (None, 40, 80, 32)    320         convolution2d_input_1[0][0]      
@@ -55,7 +57,7 @@ ________________________________________________________________________________
 dense_4 (Dense)                  (None, 1)             11          dropout_3[0][0]                  
 ====================================================================================================
 Total params: 3344293
-`
+```
 ## Training Approach
 As opposed to the large network I had in previous submission, this one is much smaller
 with only 3M parameters, also helped the fact that only 1 channel instead of three were
@@ -65,11 +67,11 @@ very good results after 20 epochs that took only few minutes to run. On the othe
 the training on data I recorded, even together with Udacity data produce inferior results
 in which the car crashes in the first lap.
 
-## Data:
+## Data
 The data consists of 8036 samples which were divided to 6508 train samples, 724 validation
 samples and 804 test samples.
 
-## Batch Generators:
+## Batch Generators
 There are two multithreaded nested generators supporting train, val and test sets. The 
 outer bach generator called threaded_generator launches the inner batch generator 
 called batch_generator in a separate thread and caches 10 outputs of the latter. Each 
@@ -91,29 +93,14 @@ preprocesses the images and appends them to images array (X). The labels are app
 to labels array and if three cameras are used the labels for left and right cameras 
 are adjusted by 0.1 and -0.1 respectively.
 
-## Data Preprocessing:
+## Data Preprocessing
 There are three main steps to data preprocessing:
 - Resizing - from the (320, 160) original size to (80, 40) using OpenCV resize method.
 - Color space conversion - the image is converted to HVS format and only the S channel
    is used. 
 - Normalization - scaling the data to the range of 0-1
 
-## Data Generation:
-In a hindsight this was more difficult and more important that I have initialy assumed.
-I recorded 5 datasets each with about three laps but the quality of driving wasn't
-great since I used keyboard for steering, and in the worst cases the car went out of the
-track. This created a problem because in some experiments I noticed that the car was
-crashing in the same place when I did bad steering job when recording data, meaning
-that I was teaching the car bad habits :). This was also a good sign though because
-I can clearly see that the model is learning and realizing the "behavior cloning"
-concept. At some stage I was able to create a model that drove for almost two rounds
-by training on two datasets but then the progress stalled. One of the fallback options
-was to manually delete pictures and lines of csv that exhibited bad driving decisions
-but this is very time consuming and not accurate process. Fortenutely Udacity released
-its own data which didn't have very bad steering decisions and after training on this 
-data the car was able to drive for at least 5 laps.
-
-## Experiments and Results:
+## Experiments and Results
 Here are some of the experiments I did but did not graduate to the final solution.
 - Several pretrained archs such as Inception and ResNet, the VGG arch performed 
 slightly better then them in short experiments.
