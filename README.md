@@ -1,47 +1,13 @@
-## Changes from previous submission:
-1. Changed architecture
+## Changes from previous submission
+1. Simplified architecture to 3 convolutional layers followed by 3 fully connected.
 2. Image preprocessing - converted to VHS and used the S channel, modified normalization
 
-## Network architecture:
+## Network architecture
 The network consists of three convolutional layers increasing in depth and 3 fully connected
 layers decreasing in size. Dropout is employed between the fully connected layers and 
 activation function is relu.
 Here is the network architecture as shown by keras model.summary():
-`
-___________________________________________________________________________________________________
-Layer (type)                     Output Shape          Param #     Connected to                     
-====================================================================================================
-convolution2d_1 (Convolution2D)  (None, 40, 80, 32)    320         convolution2d_input_1[0][0]      
-____________________________________________________________________________________________________
-maxpooling2d_1 (MaxPooling2D)    (None, 20, 40, 32)    0           convolution2d_1[0][0]            
-____________________________________________________________________________________________________
-convolution2d_2 (Convolution2D)  (None, 20, 40, 64)    18496       maxpooling2d_1[0][0]             
-____________________________________________________________________________________________________
-maxpooling2d_2 (MaxPooling2D)    (None, 10, 20, 64)    0           convolution2d_2[0][0]            
-____________________________________________________________________________________________________
-convolution2d_3 (Convolution2D)  (None, 10, 20, 128)   73856       maxpooling2d_2[0][0]             
-____________________________________________________________________________________________________
-maxpooling2d_3 (MaxPooling2D)    (None, 5, 10, 128)    0           convolution2d_3[0][0]            
-____________________________________________________________________________________________________
-flatten_1 (Flatten)              (None, 6400)          0           maxpooling2d_3[0][0]             
-____________________________________________________________________________________________________
-dense_1 (Dense)                  (None, 500)           3200500     flatten_1[0][0]                  
-____________________________________________________________________________________________________
-dropout_1 (Dropout)              (None, 500)           0           dense_1[0][0]                    
-____________________________________________________________________________________________________
-dense_2 (Dense)                  (None, 100)           50100       dropout_1[0][0]                  
-____________________________________________________________________________________________________
-dropout_2 (Dropout)              (None, 100)           0           dense_2[0][0]                    
-____________________________________________________________________________________________________
-dense_3 (Dense)                  (None, 10)            1010        dropout_2[0][0]                  
-____________________________________________________________________________________________________
-dropout_3 (Dropout)              (None, 10)            0           dense_3[0][0]                    
-____________________________________________________________________________________________________
-dense_4 (Dense)                  (None, 1)             11          dropout_3[0][0]                  
-====================================================================================================
-Total params: 3344293
-____________________________________________________________________________________________________
-`
+
 ## Training approach:
 As opposed to the large network I had in previous submission, this one is much smaller
 with only 3M parameters, also helped the fact that only 1 channel instead of three were
