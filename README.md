@@ -1,14 +1,29 @@
-## Changes from previous submission
+# Behavioral Cloning
+This project defines, trains and serves prediction for a self driving car based on a driving
+simulator. It was developed and submitted as part of Udacity Self Driving Car Nanodegree.
+
+## Change Log
 1. Simplified architecture to 3 convolutional layers followed by 3 fully connected.
 2. Image preprocessing - converted to VHS and used the S channel, modified normalization.
 
-## Network architecture
+## Dependencies
+- keras
+- tensorflow
+- numpy
+
+## Usage
+Note - the data on which the model was trained is not included in this repository. To reproduce
+original training download Udacity simulator data and unzip it to `dataset-udacity` directory 
+in the root of the project
+- To train model run `python train.py`
+- To start a prediction server run `python drive.py`
+
+## Network Architecture
 The network consists of three convolutional layers increasing in depth and 3 fully connected
 layers decreasing in size. Dropout is employed between the fully connected layers and 
 activation function is relu.
 Here is the network architecture as shown by keras model.summary():
 `
-___________________________________________________________________________________________________
 Layer (type)                     Output Shape          Param #     Connected to                     
 ====================================================================================================
 convolution2d_1 (Convolution2D)  (None, 40, 80, 32)    320         convolution2d_input_1[0][0]      
@@ -40,9 +55,8 @@ ________________________________________________________________________________
 dense_4 (Dense)                  (None, 1)             11          dropout_3[0][0]                  
 ====================================================================================================
 Total params: 3344293
-____________________________________________________________________________________________________
 `
-## Training approach:
+## Training Approach
 As opposed to the large network I had in previous submission, this one is much smaller
 with only 3M parameters, also helped the fact that only 1 channel instead of three were
 used. The smaller size of the network allowed to make several experiments with different
@@ -55,7 +69,7 @@ in which the car crashes in the first lap.
 The data consists of 8036 samples which were divided to 6508 train samples, 724 validation
 samples and 804 test samples.
 
-## Batch generators:
+## Batch Generators:
 There are two multithreaded nested generators supporting train, val and test sets. The 
 outer bach generator called threaded_generator launches the inner batch generator 
 called batch_generator in a separate thread and caches 10 outputs of the latter. Each 
@@ -77,14 +91,14 @@ preprocesses the images and appends them to images array (X). The labels are app
 to labels array and if three cameras are used the labels for left and right cameras 
 are adjusted by 0.1 and -0.1 respectively.
 
-## Data preprocessing:
+## Data Preprocessing:
 There are three main steps to data preprocessing:
 - Resizing - from the (320, 160) original size to (80, 40) using OpenCV resize method.
 - Color space conversion - the image is converted to HVS format and only the S channel
    is used. 
 - Normalization - scaling the data to the range of 0-1
 
-## Data generation:
+## Data Generation:
 In a hindsight this was more difficult and more important that I have initialy assumed.
 I recorded 5 datasets each with about three laps but the quality of driving wasn't
 great since I used keyboard for steering, and in the worst cases the car went out of the
@@ -99,7 +113,7 @@ but this is very time consuming and not accurate process. Fortenutely Udacity re
 its own data which didn't have very bad steering decisions and after training on this 
 data the car was able to drive for at least 5 laps.
 
-## Experiments and results:
+## Experiments and Results:
 Here are some of the experiments I did but did not graduate to the final solution.
 - Several pretrained archs such as Inception and ResNet, the VGG arch performed 
 slightly better then them in short experiments.
