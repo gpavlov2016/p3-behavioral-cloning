@@ -6,10 +6,6 @@
 The network consists of three convolutional layers increasing in depth and 3 fully connected
 layers decreasing in size. Dropout is employed between the fully connected layers and 
 activation function is relu.
-1. Resizing - from the (320, 160) original size to (80, 40) using OpenCV resize method.
-2. Color space conversion - the image is converted to HVS format and only the S channel
-   is used. 
-2. Normalization - scaling the data to the range of 0-1
 Here is the network architecture as shown by keras model.summary():
 `
 ___________________________________________________________________________________________________
