@@ -9,7 +9,7 @@ angle_shift = 0.1
 
 def load_csv(directory=''):
     # data_dirs = ['dataset-1', 'dataset-2', 'dataset-3', 'dataset-4', 'dataset-5', 'dataset-water', 'data-udacity']
-    data_dirs = ['dataset-1', 'dataset-2']
+    data_dirs = ['data-udacity']
 
     global csv_rows_train, csv_rows_val, csv_rows_test
     csv_rows = []
@@ -46,12 +46,20 @@ def load_csv(directory=''):
 
 
 def load_image(img_filename, angle, images, angles):
-    img = cv2.imread(img_filename, cv2.IMREAD_COLOR)
+    img = cv2.imread(img_filename)
     img = cv2.resize(img, target_shape)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
+    img = img[:,:,2] #choose S channel
     images.append(img)
     angles.append(float(angle))
 
+def normalize_data(data):
+    #X_train = X_train.astype(np.float32)
+    data = ((data - data.min())/(np.max(data) - np.min(data)))
+    # STOP: Do not change the tests below. Your implementation should pass these tests.
+    assert(round(np.mean(data)) == 0), "The mean of the input data is: %f" % np.mean(X_train)
+    assert(np.min(data) == 0.0 and np.max(data) == 1.0), "The range of the input data is: %.1f to %.1f" % (np.min(X_train), np.max(X_train))
+    return data
 
 def batch_generator(batch_size, source='train'):
     if source == 'train':
@@ -78,11 +86,11 @@ def batch_generator(batch_size, source='train'):
                 load_image(row[1], float(row[3]) + angle_shift, images, angles)  # left
                 load_image(row[2], float(row[3]) - angle_shift, images, angles)  # right
 
-        preprocessed_imgs = preprocess_input(np.array(images).astype('float'))
-        X_train = preprocessed_imgs
-        y_train = np.array(angles)
+        X = normalize_data(np.array(images).astype('float'))
+        X = X.reshape(X.shape[0], X.shape[1], X.shape[2], 1)
+        Y = np.array(angles)
         # print('Batch generated.')
-        yield (X_train, y_train)
+        yield (X, Y)
 
 
 # from https://github.com/Lasagne/Lasagne/issues/12
@@ -123,55 +131,47 @@ def show_predictions(X_test, Y_test):
               'c_p: %.4f' % sum_p, ', c_y: %.4f' % sum_y)
 
 
-from keras.applications.vgg16 import VGG16
-from keras.preprocessing import image
-from keras.applications.vgg16 import preprocess_input
-import numpy as np
-from keras.applications.inception_v3 import InceptionV3
-from keras.preprocessing import image
-from keras.models import Model
-from keras.layers import Dense, GlobalAveragePooling2D
-from keras import backend as K
+from keras.models import Model, Sequential
+from keras.layers import Dense, GlobalAveragePooling2D, Convolution2D, MaxPooling2D
 from keras.layers.core import Flatten, Dense, Dropout
 from keras.optimizers import Adam
 
-base_model = VGG16(weights='imagenet', include_top=False)
-x = base_model.output
-x = GlobalAveragePooling2D()(x)
-x = Dense(1024, activation='relu')(x)
-x = Dropout(0.2)(x)
-x = Dense(512, activation='relu')(x)
-x = Dropout(0.2)(x)
-x = Dense(256, activation='relu')(x)
-x = Dropout(0.2)(x)
-predictions = Dense(1)(x)
+model = Sequential()
+model.add(Convolution2D(32, 3, 3,
+                        border_mode='same',
+                        input_shape=(target_shape[1], target_shape[0], 1)))
+model.add(MaxPooling2D())
+model.add(Convolution2D(64, 3, 3,
+                        border_mode='same'))
+model.add(MaxPooling2D())
+model.add(Convolution2D(128, 3, 3,
+                        border_mode='same'))
+model.add(MaxPooling2D())
+model.add(Flatten())
+model.add(Dense(500, activation='relu'))
+model.add(Dropout(0.2))
+model.add(Dense(100, activation='relu'))
+model.add(Dropout(0.2))
+model.add(Dense(10, activation='relu'))
+model.add(Dropout(0.2))
+model.add(Dense(1))
 
-# this is the model we will train
-model = Model(input=base_model.input, output=predictions)
-
-# first: train only the top layers (which were randomly initialized)
-# i.e. freeze all convolutional InceptionV3 layers
-for layer in base_model.layers:
-    layer.trainable = False
-
-# compile the model (should be done *after* setting layers to non-trainable)
 my_adam = Adam(lr=0.0001)
 model.compile(loss='mse', optimizer=my_adam)
-# model.compile(optimizer='rmsprop', loss='mean_absolute_error')
 
 model.summary()
 
 load_csv()
 
-batch_size = nb_cams * int(128 / nb_cams)  # must be multiply of nb_cams
+batch_size = nb_cams*int(128/nb_cams) # must be multiply of nb_cams
 samples_per_epoch = batch_size * int(len(csv_rows_train) / batch_size)
-nb_epoch = 100
-nb_val_samples = 5 * batch_size
+nb_epoch = 20
+nb_val_samples = 5*batch_size
 
 history = model.fit_generator(threaded_generator(batch_generator(batch_size, 'train')),
-                              samples_per_epoch, nb_epoch=nb_epoch,
-                              verbose=1, validation_data=batch_generator(batch_size, 'val'),
-                              nb_val_samples=nb_val_samples)
+                    samples_per_epoch, nb_epoch=nb_epoch,
+                    verbose=1, validation_data=batch_generator(batch_size, 'val'),
+                    nb_val_samples=nb_val_samples)
 
 print('Training completed.')
 
@@ -203,8 +203,8 @@ def eval_and_save():
     score = model.evaluate(X_test, Y_test, batch_size=batch_size)
     print('Test score (MSE): ', score)
 
-    filepath = 'vgg16-pretrained-gen-' + '%.4f' % score
-    # save model architecture:
+    filepath = 'model-' + '%.4f' % score
+    # Save model architecture:
     json_string = model.to_json()
     import json
     with open(filepath + '.json', 'w') as outfile:
@@ -215,24 +215,3 @@ def eval_and_save():
     print('Weights saved to ', filepath + '.h5')
 
 eval_and_save()
-
-#Train the whole model:
-for layer in model.layers:
-    layer.trainable = True
-
-# compile the model (should be done *after* setting layers to non-trainable)
-my_adam = Adam(lr=0.00001)
-model.compile(loss='mse', optimizer=my_adam)
-
-#nb_epoch = 10
-print('batch_size: ', batch_size)
-print('samples_per_epoch: ', samples_per_epoch)
-print('nb_epoch: ', nb_epoch)
-print('nb_val_samples: ', nb_val_samples)
-
-history = model.fit_generator(threaded_generator(batch_generator(batch_size, 'train')),
-                    samples_per_epoch, nb_epoch=nb_epoch,
-                    verbose=1, validation_data=batch_generator(batch_size, 'val'),
-                    nb_val_samples=nb_val_samples)
-eval_and_save()
-

@@ -1,56 +1,72 @@
+Changes from previous submission:
+=================================
+1. Changed architecture
+2. Image preprocessing - converted to VHS and used the S channel, modified normalization
+
 Network architecture:
 =====================
-The network is build in two parts - the bottom layers are based on VGG16 network 
-and the top 3 layers are fully connected layers with output size of 1024 each
-with relu activation function and varying probabilities of dropout between them.
-The droupout probabilities are 0.5, 0.2 and 0.1 between fc1-fc2-fc3 (bottom top).
+The network consists of three convolutional layers increasing in depth and 3 fully connected
+layers decreasing in size. Dropout is employed between the fully connected layers and 
+activation function is relu.
+Here is the network architecture as shown by keras model.summary():
+___________________________________________________________________________________________________
+Layer (type)                     Output Shape          Param #     Connected to                     
+====================================================================================================
+convolution2d_1 (Convolution2D)  (None, 40, 80, 32)    320         convolution2d_input_1[0][0]      
+____________________________________________________________________________________________________
+maxpooling2d_1 (MaxPooling2D)    (None, 20, 40, 32)    0           convolution2d_1[0][0]            
+____________________________________________________________________________________________________
+convolution2d_2 (Convolution2D)  (None, 20, 40, 64)    18496       maxpooling2d_1[0][0]             
+____________________________________________________________________________________________________
+maxpooling2d_2 (MaxPooling2D)    (None, 10, 20, 64)    0           convolution2d_2[0][0]            
+____________________________________________________________________________________________________
+convolution2d_3 (Convolution2D)  (None, 10, 20, 128)   73856       maxpooling2d_2[0][0]             
+____________________________________________________________________________________________________
+maxpooling2d_3 (MaxPooling2D)    (None, 5, 10, 128)    0           convolution2d_3[0][0]            
+____________________________________________________________________________________________________
+flatten_1 (Flatten)              (None, 6400)          0           maxpooling2d_3[0][0]             
+____________________________________________________________________________________________________
+dense_1 (Dense)                  (None, 500)           3200500     flatten_1[0][0]                  
+____________________________________________________________________________________________________
+dropout_1 (Dropout)              (None, 500)           0           dense_1[0][0]                    
+____________________________________________________________________________________________________
+dense_2 (Dense)                  (None, 100)           50100       dropout_1[0][0]                  
+____________________________________________________________________________________________________
+dropout_2 (Dropout)              (None, 100)           0           dense_2[0][0]                    
+____________________________________________________________________________________________________
+dense_3 (Dense)                  (None, 10)            1010        dropout_2[0][0]                  
+____________________________________________________________________________________________________
+dropout_3 (Dropout)              (None, 10)            0           dense_3[0][0]                    
+____________________________________________________________________________________________________
+dense_4 (Dense)                  (None, 1)             11          dropout_3[0][0]                  
+====================================================================================================
+Total params: 3344293
+____________________________________________________________________________________________________
 
 Training approach:
 ==================
-This network is of a considerable size and combined with the large size of the input
-it takes a lot of time to train. To cope with this problem I loaded weights for
-convolutional layers of the model pretrained on imagenet dataset and froze them.
-In the first stage I trained the top fully connected layers only on the dataset
-for about 100 epochs and when the weights converged I unfroze the convolutional 
-layers and started a second phase of training on the whole network for additional
-100 epochs. This approach prevented from convolutional weights to diverge due to 
-unstable backprop from untrained top layers. The assumption here is that some of
-the low level features are similar between the two datasets (imagenet and car simulator)
-and their values can be reused in this case. I also saved the weights between the 
-first and second phases and checked performance using the simulator on both of them. 
-The weights after the second phase performed better.
-The approach described above produced a model with a loss of 0.03 and is capable 
-of driving for almost two rounds on the first track. To improve the results I 
-retrained the model with the weights on udacity data for 20 more epochs, now
-using all 3 camera images. The turn angle (Y label) was adjusted for left camera
-by 0.1 and for left camera by -0.1. This reduced the loss to 0.0087 on Udacity
-data (which is smoother so smaller loss is expected) and fortunetely also resulted
-in better driving, allowing the car to drive around for at least 5 laps.
-The surprizing part was how well this model handled difficult turns but had 
-a difficulty on relatively straing portion of the track. Probably can be improved
-by additional training on smooth data like Udacity's dataset.
+As opposed to the large network I had in previous submission, this one is much smaller
+with only 3M parameters, also helped the fact that only 1 channel instead of three were
+used. The smaller size of the network allowed to make several experiments with different
+datasets and surprizingly the first one I tried, which is the Udacity dataset produced
+very good results after 20 epochs that took only few minutes to run. On the other hand,
+the training on data I recorded, even together with Udacity data produce inferior results
+in which the car crashes in the first lap.
 
-Samples:
+Data:
 ========
-Initially I started with about 4000 samples, dividing them to 25% test set,
-18% validation set and the rest training sets. However this was not enough for 
-very good permormance, though one of the training weights created over 200+200
-epochs allowed the car to drive by itself for a loop and a half.
-With this in mind I recorded more data reaching 14K samples dividing them to 
-10% test, 9% validation and almost 80% training sets. The increase in the amount
-of data also required working with a batch generator because the whole data 
-didn't fit to machine's memory. There were two multithreaded nested generators 
-supporting train, val and test sets. More on the generator design see below.
+The data consists of 8036 samples which were divided to 6508 train samples, 724 validation
+samples and 804 test samples.
 
 Batch generators:
 =================
-The outer bach generator called threaded_generator launches the inner batch
-generator called batch_generator in a separate thread and caches 10 outputs
-of the latter. Each output consists of one batch (around 128 samples).
-The inner generator supports three types of data - train, test and val. In 
-the aftermath the division to test and val is redundant since the results 
-on both were pretty similar so it would have worked with only train and test
-data.
+There are two multithreaded nested generators supporting train, val and test sets. The 
+outer bach generator called threaded_generator launches the inner batch generator 
+called batch_generator in a separate thread and caches 10 outputs of the latter. Each 
+output consists of one batch (around 128 samples). The inner generator supports three 
+types of data - train, test and val. In the aftermath the division to test and val is 
+redundant since the results on both were pretty similar so it would have worked with 
+only train and test data.
 To support three data types the batch generator accepts besides the batch size
 a second parameter that selects the type. Based on this parameter one of three
 csv file arrays are chosen. The arrays are prepared earlier in the data loading
@@ -61,19 +77,17 @@ shuffling since the csv rows contain both features and labels and are small in
 size.
 After the batch generator decides on the appropriate csv rows array it randomly
 samples batch_size rows from the array, reads the images from respective files,
-resized them, normalizes the data and appends them to images array (X). The labels
-are appended to labels array and if three cameras are used the labels for left
-and right cameras are adjusted by 0.1 and -0.1 respectively.
+preprocesses the images and appends them to images array (X). The labels are appended 
+to labels array and if three cameras are used the labels for left and right cameras 
+are adjusted by 0.1 and -0.1 respectively.
 
 Data preprocessing:
 ===================
-There are two main steps to data preprocessing:
-1. Resizing - from the (320, 160) original size to (80, 40) by using OpenCV. The 
-image is not grayified in an attempt to help the model to recognize borders which
-mostly have distinct red or yellow colors.
-2. Normalization - adjusting the data to the range of -0.5 - 0.5 with a mean of 0
-to improve computational stability, conviniently done by the preprocess_data function
-imported from keras.models.VGG16
+There are three main steps to data preprocessing:
+1. Resizing - from the (320, 160) original size to (80, 40) using OpenCV resize method.
+2. Color space conversion - the image is converted to HVS format and only the S channel
+   is used. 
+2. Normalization - scaling the data to the range of 0-1
 
 Data generation:
 ================

@@ -25,6 +25,17 @@ model = None
 prev_image_array = None
 target_shape = (80, 40) #original size 320, 160
 
+
+def normalize_data(data):
+    # X_train = X_train.astype(np.float32)
+    data = ((data - data.min()) / (np.max(data) - np.min(data)))
+    # STOP: Do not change the tests below. Your implementation should pass these tests.
+    assert (round(np.mean(data)) == 0), "The mean of the input data is: %f" % np.mean(X_train)
+    assert (np.min(data) == 0.0 and np.max(data) == 1.0), "The range of the input data is: %.1f to %.1f" % (
+        np.min(X_train), np.max(X_train))
+    return data
+
+
 @sio.on('telemetry')
 def telemetry(sid, data):
     # The current steering angle of the car
@@ -35,14 +46,18 @@ def telemetry(sid, data):
     speed = np.array([float(data["speed"])])
     # The current image from the center camera of the car
     imgString = data["image"]
-    image = Image.open(BytesIO(base64.b64decode(imgString)))
-    image_array = np.asarray(image)
-    image_array = cv2.resize(image_array, target_shape)
-    transformed_image_array = image_array[None, :, :, :]
-    transformed_image_array = preprocess_input(transformed_image_array.astype('float'))
+    img = Image.open(BytesIO(base64.b64decode(imgString)))
+    img = np.asarray(img)
+    img = cv2.resize(img, target_shape)
+
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
+    img = img[:, :, 2]  # choose S channel
+    img = normalize_data(img.astype('float'))
+    img = img.reshape((1, img.shape[0], img.shape[1], 1))
+
     # This model currently assumes that the features of the model are just the images. Feel free to change this.
     #print('predicting')
-    steering_angle = float(loaded_model.predict(transformed_image_array, batch_size=1))
+    steering_angle = float(loaded_model.predict(img, batch_size=1))
     # The driving model currently just outputs a constant throttle. Feel free to edit this.
     throttle = 0.2
     print(steering_angle, throttle)
