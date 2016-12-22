@@ -1,13 +1,47 @@
 ## Changes from previous submission
 1. Simplified architecture to 3 convolutional layers followed by 3 fully connected.
-2. Image preprocessing - converted to VHS and used the S channel, modified normalization
+2. Image preprocessing - converted to VHS and used the S channel, modified normalization.
 
 ## Network architecture
 The network consists of three convolutional layers increasing in depth and 3 fully connected
 layers decreasing in size. Dropout is employed between the fully connected layers and 
 activation function is relu.
 Here is the network architecture as shown by keras model.summary():
-
+`
+___________________________________________________________________________________________________
+Layer (type)                     Output Shape          Param #     Connected to                     
+====================================================================================================
+convolution2d_1 (Convolution2D)  (None, 40, 80, 32)    320         convolution2d_input_1[0][0]      
+____________________________________________________________________________________________________
+maxpooling2d_1 (MaxPooling2D)    (None, 20, 40, 32)    0           convolution2d_1[0][0]            
+____________________________________________________________________________________________________
+convolution2d_2 (Convolution2D)  (None, 20, 40, 64)    18496       maxpooling2d_1[0][0]             
+____________________________________________________________________________________________________
+maxpooling2d_2 (MaxPooling2D)    (None, 10, 20, 64)    0           convolution2d_2[0][0]            
+____________________________________________________________________________________________________
+convolution2d_3 (Convolution2D)  (None, 10, 20, 128)   73856       maxpooling2d_2[0][0]             
+____________________________________________________________________________________________________
+maxpooling2d_3 (MaxPooling2D)    (None, 5, 10, 128)    0           convolution2d_3[0][0]            
+____________________________________________________________________________________________________
+flatten_1 (Flatten)              (None, 6400)          0           maxpooling2d_3[0][0]             
+____________________________________________________________________________________________________
+dense_1 (Dense)                  (None, 500)           3200500     flatten_1[0][0]                  
+____________________________________________________________________________________________________
+dropout_1 (Dropout)              (None, 500)           0           dense_1[0][0]                    
+____________________________________________________________________________________________________
+dense_2 (Dense)                  (None, 100)           50100       dropout_1[0][0]                  
+____________________________________________________________________________________________________
+dropout_2 (Dropout)              (None, 100)           0           dense_2[0][0]                    
+____________________________________________________________________________________________________
+dense_3 (Dense)                  (None, 10)            1010        dropout_2[0][0]                  
+____________________________________________________________________________________________________
+dropout_3 (Dropout)              (None, 10)            0           dense_3[0][0]                    
+____________________________________________________________________________________________________
+dense_4 (Dense)                  (None, 1)             11          dropout_3[0][0]                  
+====================================================================================================
+Total params: 3344293
+____________________________________________________________________________________________________
+`
 ## Training approach:
 As opposed to the large network I had in previous submission, this one is much smaller
 with only 3M parameters, also helped the fact that only 1 channel instead of three were
@@ -45,10 +79,10 @@ are adjusted by 0.1 and -0.1 respectively.
 
 ## Data preprocessing:
 There are three main steps to data preprocessing:
-1. Resizing - from the (320, 160) original size to (80, 40) using OpenCV resize method.
-2. Color space conversion - the image is converted to HVS format and only the S channel
+- Resizing - from the (320, 160) original size to (80, 40) using OpenCV resize method.
+- Color space conversion - the image is converted to HVS format and only the S channel
    is used. 
-2. Normalization - scaling the data to the range of 0-1
+- Normalization - scaling the data to the range of 0-1
 
 ## Data generation:
 In a hindsight this was more difficult and more important that I have initialy assumed.
@@ -67,15 +101,15 @@ data the car was able to drive for at least 5 laps.
 
 ## Experiments and results:
 Here are some of the experiments I did but did not graduate to the final solution.
-1. Several pretrained archs such as Inception and ResNet, the VGG arch performed 
+- Several pretrained archs such as Inception and ResNet, the VGG arch performed 
 slightly better then them in short experiments.
-2. Combining speed to the decision. I didn't observe significant improvement adding
+- Combining speed to the decision. I didn't observe significant improvement adding
 speed to the features and in some cases the performance got worse. It's hard at this
 point to isolate whether it was the speed or defficiency of other parameters.
-3. Training small models ranging from 16x32x64 conv layers to 50x150x250, different
+- Training small models ranging from 16x32x64 conv layers to 50x150x250, different
 sizes of FC layers (4096x4096x4096 - 1024x512x256), the top bottom FC layer of 1024
 seems like the sweet spot thought the results are not conclusive.
-4. Different dropout probabilities from 0 to 0.5 with piramide pattern (larger
+- Different dropout probabilities from 0 to 0.5 with piramide pattern (larger
 dropouts for larger layers). Higher dropouts required longer training but did not
 produce better results.
 
